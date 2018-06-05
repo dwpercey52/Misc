@@ -1,19 +1,17 @@
-package backend;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
-import frontend.*;
 
-public class Server implements Runnable{
+public class Server extends Thread{
 
 	private ServerSocket listenSock;
 	int clientID = 0;
 	private ArrayList<Client> clientList = new ArrayList<Client>();
-	public ServerController cont;
+	ServerDisplay servGUI;
 	
 	Server() throws IOException{
 		listenSock = new ServerSocket(60001);
@@ -23,9 +21,9 @@ public class Server implements Runnable{
 		listenSock = new ServerSocket(port);
 	}
 	
-	public Server(ServerController cont) throws IOException{
-		listenSock = new ServerSocket(60000);
-		this.cont = cont;
+	public Server(int port, ServerDisplay servGUI) throws IOException{
+		this.servGUI = servGUI;
+		listenSock = new ServerSocket(port);
 	}
 	
 	
@@ -99,20 +97,16 @@ public class Server implements Runnable{
 	class Client extends Thread{
 		
 		Socket sock;
-		OutputStream out;
-		InputStream in;
+		ObjectOutputStream out;
+		ObjectInputStream in;
 		String user;
 		int id;
+		ChatPacket inMessage = new ChatPacket();
 		
-		
-		Client(Socket sock) throws IOException {
-			try{
-				out = sock.getOutputStream();
-				in = sock.getInputStream();
-				id = ++clientID;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		Client(Socket sock) throws IOException{
+			out = new ObjectOutputStream(sock.getOutputStream());
+			in = new ObjectInputStream(sock.getInputStream());
+			id = ++clientID;
 		}
 		
 		
@@ -125,15 +119,14 @@ public class Server implements Runnable{
 			boolean alive = true;
 			
 			while(alive) {
-				System.out.println("Client sends in a message!");
-				displayMessage(Integer.toString(id));
+				try {
+					inMessage = (ChatPacket) in.readObject();
+					System.out.println(inMessage);
+				} catch (ClassNotFoundException | IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				alive = false;
-			}
-			
-			try {
-				close();
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
 		}
 		
